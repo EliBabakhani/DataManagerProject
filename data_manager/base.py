@@ -1,17 +1,17 @@
 from abc import ABC, abstractmethod
-from typing import Any, Generator
-
+from typing import Any, Generator, Optional
 
 class BaseModel(ABC):
+    TABLE_NAME = None
+    COLUMNS = {
+        '_id': ('_id', 'SERIAL', 'PRIMARY KEY'),
+    }
+    
     _id: int
 
     def __repr__(self):
         return f"<{self.__class__.__name__} #{self._id}>"
-
-    def __eq__(self, __value: object) -> bool:
-        return (type(self) is type(__value) and
-                self._id == __value._id)
-
+    
     @classmethod
     def from_dict(cls, data):
         obj = cls.__new__(cls)
@@ -19,16 +19,20 @@ class BaseModel(ABC):
             setattr(obj, k, v)
         return obj
 
+    @classmethod
+    def _get_columns(cls):
+        super_cols = getattr(super(cls, cls), 'COLUMNS', {})
+        cls_cols = getattr(cls, 'COLUMNS', {})
+        super_cols.update(cls_cols)
+        return super_cols
+
     def to_dict(self):
         result = vars(self).copy()
-        for k in result.keys():
-            if not k.lower():
-                del result[k]
         return result
 
 
 class BaseManager(ABC):
-
+    
     def __init__(self, config: dict) -> None:
         self._config = config or {}
 
@@ -45,10 +49,10 @@ class BaseManager(ABC):
         pass
 
     @abstractmethod
-    def read(self, id: int, model_cls: type) -> BaseModel:
+    def read(self, id: int, model_cls: type) -> Optional[BaseModel]:
         """
         Returns a model by its class and id
-          and None if not found
+        (None if not found)
         """
         pass
 

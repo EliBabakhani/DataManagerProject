@@ -60,7 +60,9 @@ class DBManager(BaseManager):
             curs.execute(
                 f"SELECT * FROM {model_cls.TABLE_NAME} WHERE '_id'={id};")
             read_row = curs.fetchall()
-        self.__conn.commit()
+            if read_row:
+                return model_cls.from_dict(read_row)
+            return None
 
     def update(self, m: BaseModel) -> None:
         with self.__conn.cursor() as curs:
@@ -68,7 +70,6 @@ class DBManager(BaseManager):
             converter = self.converter_model_to_query
             keys = ','.join(model_data.keys())
             values = ','.join(map(converter, model_data.values()))
-            # curs.execute(f"INSERT INTO {m.TABLE_NAME} ({keys}) VALUES ({values}) RETURNING _id")
             curs.execute(
                 f" UPDATE {m.TABLE_NAME} SET {keys} WHERE '_id'= {m._id}", ({values}))
         self.__conn.commit()
