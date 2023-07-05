@@ -13,6 +13,8 @@ class FileManager(BaseManager):
         Args:
             config (dict): The configuration dictionary for the FileManager instance.
         """
+        assert self.ROOT_PATH_CONFIG_KEY in config.keys(), "Provide a config"
+
         super().__init__(config)
 
     @property
@@ -73,6 +75,7 @@ class FileManager(BaseManager):
         with open(file_path,"wb") as handle:
             pickle.dump(m,handle)
         return file_path
+    
 
     def read(self, id: int, model_cls: type) -> BaseModel:
        
@@ -99,6 +102,7 @@ class FileManager(BaseManager):
         Args:
             m (BaseModel): The model instance to update.
         """
+        assert(hasattr(m,"_id"), "model must have id")
         file_path=self._get_file_path(m._id,m.__class__)
         with open(file_path,"ab") as handle:
             pickle.dump(m,handle)
@@ -113,14 +117,19 @@ class FileManager(BaseManager):
             model_cls (type): The type of the model instance.
         """
         file_path=self._get_file_path(id,model_cls)
-        os.remove(file_path)
+        if os.path.exists(file_path):
+            os.remove(file_path)
 
     def read_all(self, model_cls: type = None) -> Generator:
-        files = os.listdir(self.files_root + '/')
-        for file in files:
-            if file is None or file.startswith(model_cls.__name__):
-                with open(os.path.join(self.files_root,file), "rb") as handle:
-                    yield pickle.load(handle)
+        for file_name in os.listdir(self.files_root):
+            if not file_name.endswith('.pkl'):
+                continue
+            if model_cls and not file_name.startswith(model_cls.__name__): # Need fix
+                continue
+            file_path = os.path.join(self.files_root, file_name)  # data, Event_2.pkl -> data/Event_2.pkl
+            with open(file_path, 'rb') as f:
+                instance = pickle.load(f)
+                yield instance
         """
         Reads all model instances from the file system.
 
@@ -143,3 +152,6 @@ class FileManager(BaseManager):
         for file in files:
             if file.startswith(model_cls.__name__):
                 os.remove(os.path.join(self.files_root,file))
+
+        # for model in self.read_all(model_cls):
+        #     self.delete(model._id, model.__class__)
